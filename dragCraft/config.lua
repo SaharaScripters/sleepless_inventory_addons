@@ -21,7 +21,7 @@
 
 ---@type table<string, CraftRecipe>
 local RECIPES = {
-    ['garbage scrapmetal'] = {
+    ['weed weed_wrap'] = {
         duration = 2000,
         client = {
             before = function(recipeData)
@@ -46,11 +46,12 @@ local RECIPES = {
             end,
         },
         costs = {
-            ['garbage'] = { need = 1, remove = true },
-            ['scrapmetal'] = { need = 0.1, remove = true },
+            ['weed'] = { need = 1, remove = true },
+            ['weed_wrap'] = { need = 1, remove = true },
+            ['cigarette'] = { need = 5, remove = true },
         },
         result = {
-            { name = 'lockpick', amount = 1 },
+            { name = 'joint', amount = 5 },
             -- { name = 'something', amount = 1 }
         },
     },
