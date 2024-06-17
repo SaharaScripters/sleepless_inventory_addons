@@ -9,8 +9,7 @@
 ---@field amount number The amount of the resulting item.
 
 ---@class CraftQueueEntry
----@field item1 CraftItem Information about the first item used in crafting.
----@field item2 CraftItem Information about the second item used in crafting.
+---@field costs table<string, CraftCost> The resources required for crafting, including their quantities and removal flags.
 ---@field result CraftResult[] The result of the crafting process.
 
 local ox_inventory = exports.ox_inventory
@@ -34,19 +33,13 @@ local craftHook = ox_inventory:registerHook('swapItems', function(data)
         if not recipeIndex then return end
 
         local recipe = RECIPES[recipeIndex]
-
-        local amount1 = recipe.costs[fromSlot.name].need
-        if amount1 > ox_inventory:GetItem(data.source, fromSlot.name, nil, true) then
-            local description = ("Not enough %s. Need %d"):format(fromSlot.label, amount1)
-            TriggerClientEvent('ox_lib:notify', data.source, { type = 'error', description = description })
-            return false
-        end
-
-        local amount2 = recipe.costs[toSlot.name].need
-        if amount2 > ox_inventory:GetItem(data.source, toSlot.name, nil, true) then
-            local description = ("Not enough %s. Need %d"):format(toSlot.label, amount2)
-            TriggerClientEvent('ox_lib:notify', data.source, { type = 'error', description = description })
-            return false
+        local costs = recipe.costs
+        for itemName, cost in pairs(costs) do
+            if ox_inventory:GetItem(data.source, itemName, nil, true) < cost.need then
+                local description = ("Not enough %s. Need %d"):format(itemName, cost.need)
+                TriggerClientEvent('ox_lib:notify', data.source, { type = 'error', description = description })
+                return false
+            end
         end
 
         local resultForQueue = {}
@@ -60,18 +53,7 @@ local craftHook = ox_inventory:registerHook('swapItems', function(data)
         end
 
         CraftQueue[data.source] = {
-            item1 = {
-                name = fromSlot.name,
-                amount = amount1,
-                remove = recipe.costs[fromSlot.name].remove,
-                slot = fromSlot.slot
-            },
-            item2 = {
-                name = toSlot.name,
-                amount = amount2,
-                remove = recipe.costs[toSlot.name].remove,
-                slot = toSlot.slot
-            },
+            costs = costs,
             result = resultForQueue
         }
 
@@ -91,31 +73,17 @@ local craftHook = ox_inventory:registerHook('swapItems', function(data)
 end, {})
 
 ---@param source number player server id
----@param craftItem CraftItem
-local function updateItemDurability(source, craftItem)
-    local item = ox_inventory:GetSlot(source, craftItem.slot)
-    if not item then return end
-
-    local durability = item.metadata?.durability or 100
-    durability = durability - (100 * craftItem.amount)
-
-    if durability <= 0 then
-        ox_inventory:RemoveItem(source, craftItem.name, 1, nil, item.slot)
-    else
-        ox_inventory:SetDurability(source, item.slot, durability)
+---@param costs table<string, CraftCost>
+---@return boolean
+local function processCraftItems(source, costs)
+    for itemName, craftItem in pairs(costs) do
+        if craftItem.remove and not ox_inventory:RemoveItem(source, itemName, craftItem.need) then
+            local description = ("You do not have enough %s to craft this item."):format(itemName)
+            TriggerClientEvent('ox_lib:notify', source, { type = 'error', description = description })
+            return false
+        end
     end
-end
-
----@param source number player server id
----@param craftItem CraftItem
-local function processCraftItem(source, craftItem)
-    if not craftItem.remove then return end
-
-    if craftItem.amount > 0 and craftItem.amount < 1 then
-        updateItemDurability(source, craftItem)
-    else
-        ox_inventory:RemoveItem(source, craftItem.name, craftItem.amount)
-    end
+    return true
 end
 
 ---@param success boolean
@@ -128,10 +96,7 @@ RegisterNetEvent('dragCraft:success', function(success, index)
 
     if not queuedCraft then return end
 
-    if success then
-        processCraftItem(source, queuedCraft.item1)
-        processCraftItem(source, queuedCraft.item2)
-
+    if success and processCraftItems(source, queuedCraft.costs) then
         for i = 1, #queuedCraft.result do
             local resultData = queuedCraft.result[i]
             ox_inventory:AddItem(source, resultData.name, resultData.amount)

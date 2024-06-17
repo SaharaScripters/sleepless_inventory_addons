@@ -22,6 +22,7 @@
 ---@type table<string, CraftRecipe>
 local RECIPES = {
     ['weed weed_wrap'] = {
+        label = 'Rolling Joint',
         duration = 2000,
         client = {
             before = function(recipeData)
@@ -45,6 +46,11 @@ local RECIPES = {
                 -- returns boolean or nil
             end,
         },
+        anim = {
+            dict = 'amb@prop_human_parking_meter@male@base',
+            clip = 'base',
+        },
+        prop = {},
         costs = {
             ['weed'] = { need = 1, remove = true },
             ['weed_wrap'] = { need = 1, remove = true },

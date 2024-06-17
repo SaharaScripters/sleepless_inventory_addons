@@ -17,16 +17,14 @@ RegisterNetEvent('dragCraft:Craft', function(duration, index)
 
     local result = lib.progressCircle({
         duration = duration,
-        label = 'Crafting...',
+        label = recipe.label or 'Crafting',
+        anim = recipe.anim,
+        prop = recipe.prop,
         position = 'middle',
         useWhileDead = false,
         canCancel = true,
         disable = {
             car = true,
-        },
-        anim = {
-            dict = 'amb@prop_human_parking_meter@male@base',
-            clip = 'base'
         },
     })
 
